@@ -233,16 +233,16 @@ class PythonPVector(object):
     def delete(self, index, stop=None):
         l = self.tolist()
         del l[_index_or_slice(index, stop)]
-        return _EMPTY_PVECTOR.extend(l)
+        return _EMPTY_PVECTOR.extend(l) # TODO add version
 
     def remove(self, value):
         l = self.tolist()
         l.remove(value)
-        return _EMPTY_PVECTOR.extend(l)
+        return _EMPTY_PVECTOR.extend(l) # TODO add version
 
 _EMPTY_PVECTOR = PythonPVector(0, SHIFT, [], [], [])
 def pvector(iterable=()):
-    return _EMPTY_PVECTOR.extend(iterable)
+    return _EMPTY_PVECTOR.extend(iterable) # TODO vreate instance
 
 def v(*elements):
     return pvector(elements)
