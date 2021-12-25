@@ -20,14 +20,15 @@ def _index_or_slice(index, stop):
 
 
 class PythonPVector(object):
-    __slots__ = ('_count', '_shift', '_root', '_tail', '_tail_offset', '__weakref__')
+    __slots__ = ('_count', '_shift', '_root', '_tail', '_tail_offset', '_versions', '__weakref__')
 
-    def __new__(cls, count, shift, root, tail):
+    def __new__(cls, count, shift, root, tail, versions):
         self = super(PythonPVector, cls).__new__(cls)
         self._count = count
         self._shift = shift
         self._root = root
         self._tail = tail
+        self._versions = versions + [self]
         self._tail_offset = self._count - len(self._tail)
         return self
 
@@ -51,6 +52,10 @@ class PythonPVector(object):
     def __iter__(self):
         return iter(self.tolist())
 
+    def _save_version(self, new):
+        self._versions.append(new)
+        return new
+
     def _fill_list(self, node, shift, the_list):
         if shift:
             shift -= SHIFT
@@ -68,8 +73,24 @@ class PythonPVector(object):
     def _totuple(self):
         return tuple(self.tolist())
 
+    def __str__(self):
+        return str(self.tolist())
+
+    def __repr__(self):
+        return str(self.tolist())
+
     def __hash__(self):
         return hash(self._totuple())
+
+    def undo(self):
+        curr_index = self._versions.index(self)
+        curr_index = max(0, curr_index - 1)
+        return self._versions[curr_index]
+
+    def redo(self):
+        curr_index = self._versions.index(self)
+        curr_index = min(len(self._versions) - 1, curr_index + 1)
+        return self._versions[curr_index]
 
     def set(self, i, val):
         if not isinstance(i, Integral):
@@ -82,9 +103,17 @@ class PythonPVector(object):
             if i >= self._tail_offset:
                 new_tail = list(self._tail)
                 new_tail[i & BIT_MASK] = val
-                return PythonPVector(self._count, self._shift, self._root, new_tail)
+                return self._save_version(PythonPVector(self._count,
+                                                        self._shift,
+                                                        self._root,
+                                                        new_tail,
+                                                        self._versions))
 
-            return PythonPVector(self._count, self._shift, self._do_set(self._shift, self._root, i, val), self._tail)
+            return self._save_version(PythonPVector(self._count,
+                                                    self._shift,
+                                                    self._do_set(self._shift, self._root, i, val),
+                                                    self._tail,
+                                                    self._versions))
 
         if i == self._count:
             return self.append(val)
@@ -129,9 +158,19 @@ class PythonPVector(object):
         if len(self._tail) < BRANCH_FACTOR:
             new_tail = list(self._tail)
             new_tail.append(val)
-            return PythonPVector(self._count + 1, self._shift, self._root, new_tail)
+            return self._save_version(PythonPVector(self._count + 1,
+                                                    self._shift,
+                                                    self._root,
+                                                    new_tail,
+                                                    self._versions))
+
         new_root, new_shift = self._create_new_root()
-        return PythonPVector(self._count + 1, new_shift, new_root, [val])
+        return self._save_version(PythonPVector(self._count + 1,
+                                                new_shift,
+                                                new_root,
+                                                [val],
+                                                self._versions
+                                                ))
 
     def _new_path(self, level, node):
         if level == 0:
@@ -201,7 +240,7 @@ class PythonPVector(object):
         l.remove(value)
         return _EMPTY_PVECTOR.extend(l)
 
-_EMPTY_PVECTOR = PythonPVector(0, SHIFT, [], [])
+_EMPTY_PVECTOR = PythonPVector(0, SHIFT, [], [], [])
 def pvector(iterable=()):
     return _EMPTY_PVECTOR.extend(iterable)
 
