@@ -39,7 +39,11 @@ class PythonPVector(object):
         if isinstance(index, slice):
             if index.start is None and index.stop is None and index.step is None:
                 return self
-            return _EMPTY_PVECTOR.extend(self.tolist()[index])
+
+            new_v = PythonPVector(0, SHIFT, [], [], self._versions)
+            self._save_version(new_v)
+
+            return new_v.extend(self.tolist()[index])
 
         if index < 0:
             index += self._count
@@ -233,16 +237,21 @@ class PythonPVector(object):
     def delete(self, index, stop=None):
         l = self.tolist()
         del l[_index_or_slice(index, stop)]
-        return _EMPTY_PVECTOR.extend(l) # TODO add version
+
+        new_v = PythonPVector(0, SHIFT, [], [], self._versions)
+        self._save_version(new_v)
+
+        return new_v.extend(l)
 
     def remove(self, value):
         l = self.tolist()
         l.remove(value)
-        return _EMPTY_PVECTOR.extend(l) # TODO add version
+        new_v = PythonPVector(0, SHIFT, [], [], self._versions)
+        self._save_version(new_v)
+        return new_v.extend(l)
 
-_EMPTY_PVECTOR = PythonPVector(0, SHIFT, [], [], [])
 def pvector(iterable=()):
-    return _EMPTY_PVECTOR.extend(iterable) # TODO vreate instance
+    return PythonPVector(0, SHIFT, [], [], []).extend(iterable)
 
 def v(*elements):
     return pvector(elements)
