@@ -1,5 +1,6 @@
 from unittest import TestCase
 from src import pvector
+import pytest
 
 class TestPythonPVector(TestCase):
 
@@ -48,6 +49,17 @@ class TestPythonPVector(TestCase):
             self.assertEqual(v2.tolist(), base_list)
             self.assertNotEqual(v.tolist(), v2.tolist())
             v = v2
+
+    def test_root_overflow(self):
+        v = pvector()
+        # overflow in last element
+        # 32 * 32 tree + 32 tail
+        for i in range(32 * 32 + 33):
+            v = v.append(i)
+
+    def test_mutating_extend(self):
+        v = pvector([33] * 33)
+        self.assertEqual(len(v), 33)
 
     def test_add(self):
         v = pvector()
@@ -133,3 +145,26 @@ class TestPythonPVector(TestCase):
         v = pvector()
         v1 = v.append(5)
         self.assertEqual(v.redo().tolist(), v1.tolist())
+
+    def test_repesentation(self):
+        v = pvector()
+        self.assertEqual(str(v), '[]')
+        self.assertEqual(repr(v), '[]')
+
+    def test_raise_set(self):
+        with pytest.raises(TypeError) as e_info:
+            v = pvector()
+            v.set(v, 0)
+
+    def test_set_in_tail(self):
+        v = pvector([1, 2, 3])
+        v = v.set(1, 45)
+        self.assertEqual(v[1], 45)
+
+    def test_set_in_tree(self):
+        # >  max tail size
+        v = pvector([3] * 33)
+        v = v.set(0, 45)
+        self.assertEqual(v[0], 45)
+
+
