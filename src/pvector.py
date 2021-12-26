@@ -21,6 +21,7 @@ def _index_or_slice(index, stop):
 
 
 class PythonPVector(object):
+
     __slots__ = ('_count', '_shift', '_root', '_tail', '_tail_offset', '_versions', '__weakref__')
 
     def __new__(cls, count, shift, root, tail, versions):
@@ -64,6 +65,8 @@ class PythonPVector(object):
         return new
 
     def _fill_list(self, node, shift, the_list):
+        """ Рекурсивно наполняем лист """
+
         if shift:
             shift -= SHIFT
             for n in node:
@@ -90,16 +93,21 @@ class PythonPVector(object):
         return hash(self._totuple())
 
     def undo(self):
+        """ Возвращает предыдущую версию вектора """
         curr_index = self._versions.index(self)
         curr_index = max(0, curr_index - 1)
         return self._versions[curr_index]
 
     def redo(self):
+        """ Возвращает следующую версию вектора """
+
         curr_index = self._versions.index(self)
         curr_index = min(len(self._versions) - 1, curr_index + 1)
         return self._versions[curr_index]
 
     def set(self, i, val):
+        """ Обновление значения по индексу """
+
         if not isinstance(i, Integral):
             raise TypeError("Not index")
 
@@ -134,7 +142,9 @@ class PythonPVector(object):
         raise IndexError("Index out of range: %s" % (i,))
 
     def _do_set(self, level, node, i, val):
-        ''' Обновление элемента в дереве '''
+        """
+            Обновление элемента в дереве
+        """
 
         # копируем ноду
         ret = list(node)
@@ -162,6 +172,8 @@ class PythonPVector(object):
         raise IndexError("Index out of range: %s" % (i,))
 
     def _create_new_root(self):
+        """ Создание нового root """
+
         new_shift = self._shift
 
         # root overflow, надо создать новый уровень дерева
@@ -179,6 +191,8 @@ class PythonPVector(object):
         return new_root, new_shift
 
     def append(self, val):
+        """ Добавление элемента в конец """
+
         # есть место в tail?
         if len(self._tail) < BRANCH_FACTOR:
             # ускорение за счет отказа от копирования пути при добавлении нового элемента
@@ -209,12 +223,14 @@ class PythonPVector(object):
         return [self._new_path(level - SHIFT, node)]
 
     def _mutating_insert_tail(self):
-        ''' Создаем рут или новый уровень при переполнении tail'''
+        """ Создаем рут или новый уровень при переполнении tail"""
+
         self._root, self._shift = self._create_new_root()
         self._tail = []
 
     def _mutating_fill_tail(self, offset, sequence):
-        ''' Заполняем tail не создавая новую версию '''
+        """ Заполняем tail не создавая новую версию """
+
         max_delta_len = BRANCH_FACTOR - len(self._tail)
         delta = sequence[offset:offset + max_delta_len]
         self._tail.extend(delta)
@@ -233,6 +249,8 @@ class PythonPVector(object):
         self._tail_offset = self._count - len(self._tail)
 
     def extend(self, obj):
+        """ Добавление нескольких элементов в вектор """
+
         l = obj.tolist() if isinstance(obj, PythonPVector) else list(obj)
         if l:
             # создаем новый вектор с одним элементом (новая версия)
@@ -269,29 +287,28 @@ class PythonPVector(object):
         return ret
 
     def index(self, value, *args, **kwargs):
+        """ Индекс элемента в векторе """
+
         return self.tolist().index(value, *args, **kwargs)
 
     def count(self, value):
+        """ Количество элементов в веторе равных value """
+
         return self.tolist().count(value)
 
-    def delete(self, index, stop=None):
-        l = self.tolist()
-        del l[_index_or_slice(index, stop)]
-
-        new_v = PythonPVector(0, SHIFT, [], [], self._versions)
-        self._save_version(new_v)
-
-        return new_v.extend(l)
-
     def remove(self, value):
+        """ Удаление элемента """
+
         l = self.tolist()
         l.remove(value)
         new_v = PythonPVector(0, SHIFT, [], [], self._versions)
         self._save_version(new_v)
         return new_v.extend(l)
 
+
 def pvector(iterable=()):
     return PythonPVector(0, SHIFT, [], [], []).extend(iterable)
+
 
 def v(*elements):
     return pvector(elements)

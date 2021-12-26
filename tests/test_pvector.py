@@ -131,9 +131,9 @@ class TestPythonPVector(TestCase):
         v = pvector([3] * 4)
         self.assertEqual(4, v.count(3))
 
-    def test_delete(self):
+    def test_remove(self):
         v = pvector([3])
-        v1 = v.delete(0)
+        v1 = v.remove(3)
         self.assertEqual(len(v1), 0)
 
     def test_undo_one(self):
