@@ -159,6 +159,9 @@ class PythonPVector(object):
 
     @staticmethod
     def _node_for(pvector_like, i):
+        """
+            Поик node для элемента с индексом i
+        """
         if 0 <= i < pvector_like._count:
             if i >= pvector_like._tail_offset:
                 return pvector_like._tail
@@ -305,6 +308,117 @@ class PythonPVector(object):
         self._save_version(new_v)
         return new_v.extend(l)
 
+    # Evolver for pmap
+
+    class Evolver(object):
+        __slots__ = ('_count', '_shift', '_root', '_tail', '_tail_offset', '_dirty_nodes',
+                     '_extra_tail', '_cached_leafs', '_orig_pvector')
+        # TODO add tests for Evolver
+
+        def __init__(self, v):
+            self._reset(v)
+
+        def __getitem__(self, index):
+            if not isinstance(index, Integral):
+                raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+
+            if index < 0:
+                index += self._count + len(self._extra_tail)
+
+            if self._count <= index < self._count + len(self._extra_tail):
+                return self._extra_tail[index - self._count]
+
+            return PythonPVector._node_for(self, index)[index & BIT_MASK]
+
+        def _reset(self, v):
+            self._count = v._count
+            self._shift = v._shift
+            self._root = v._root
+            self._tail = v._tail
+            self._tail_offset = v._tail_offset
+            self._dirty_nodes = {}
+            self._cached_leafs = {}
+            self._extra_tail = [] # для новых элементов
+            self._orig_pvector = v
+
+        def extend(self, iterable):
+            self._extra_tail.extend(iterable)
+            return self
+
+        def __setitem__(self, index, val):
+            if not isinstance(index, Integral):
+                raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+
+            if index < 0:
+                index += self._count + len(self._extra_tail)
+
+            if 0 <= index < self._count:
+                # получаем node для индекса из кеша
+                node = self._cached_leafs.get(index >> SHIFT)
+                if node:
+                    node[index & BIT_MASK] = val
+                elif index >= self._tail_offset:
+                    # если элемент для обновления в хвосте
+                    if id(self._tail) not in self._dirty_nodes:
+                        # создаем новый _tail, помечаем как измененный
+                        self._tail = list(self._tail)
+                        self._dirty_nodes[id(self._tail)] = True
+                        self._cached_leafs[index >> SHIFT] = self._tail
+                    self._tail[index & BIT_MASK] = val
+                else:
+                    # элемент в дереве, алгоритм как для pvector _do_set
+                    self._root = self._do_set(self._shift, self._root, index, val)
+            elif self._count <= index < self._count + len(self._extra_tail):
+                # элемент находиться в _extra_tail
+                self._extra_tail[index - self._count] = val
+            elif index == self._count + len(self._extra_tail):
+                # элемента нет в структуре
+                self._extra_tail.append(val)
+            else:
+                raise IndexError("Index out of range: %s" % (index,))
+
+        def _do_set(self, level, node, i, val):
+            """
+                _do_set как в pvector
+            """
+            # помечаем ноду как измененную
+            if id(node) in self._dirty_nodes:
+                ret = node
+            else:
+                # делаем копию ноды
+                ret = list(node)
+                self._dirty_nodes[id(ret)] = True
+
+            if level == 0:
+                ret[i & BIT_MASK] = val
+                self._cached_leafs[i >> SHIFT] = ret
+            else:
+                sub_index = (i >> level) & BIT_MASK  # >>>
+                ret[sub_index] = self._do_set(level - SHIFT, node[sub_index], i, val)
+
+            return ret
+
+        def persistent(self):
+            result = self._orig_pvector
+
+            # если evolver был модифицирован
+            if self.is_dirty():
+                result = PythonPVector(self._count, self._shift, self._root, self._tail, []).extend(self._extra_tail)
+                self._reset(result)
+
+            return result
+
+        def __len__(self):
+            return self._count + len(self._extra_tail)
+
+        def is_dirty(self):
+            """
+                true, если над evolver производились модификации
+            """
+            return bool(self._dirty_nodes or self._extra_tail)
+
+    def evolver(self):
+        return PythonPVector.Evolver(self)
 
 def pvector(iterable=()):
     return PythonPVector(0, SHIFT, [], [], []).extend(iterable)
