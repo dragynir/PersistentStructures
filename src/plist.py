@@ -14,15 +14,25 @@ class ListFatNode(object):
     def add(self, node):
         self.nodes.append(node)
 
-    def find_node(self, version_node, version_id):
-        # TODO
-        pass
+    def find_node(self, version_node):
+
+        it = version_node
+
+        while it is not None:
+            any_nodes = list(filter(lambda n: n.version == it.version, self.nodes))
+
+            if any_nodes:
+                return any_nodes[0]
+            else:
+                it = it.parent
+
+        assert False, "Unreached version"
 
     def is_full(self):
         return len(self.nodes) == ListFatNode.MAX_SIZE
 
-    def update_right(self, right_node, version_node, version_id):
-        node = self.find_node(version_node, version_id)
+    def update_right(self, right_node, version_node):
+        node = self.find_node(version_node)
         new_node = node.copy()
 
         new_node.right_node = right_node
@@ -32,7 +42,7 @@ class ListFatNode(object):
             new_f.add(new_node)
 
             if node.left_node:
-                new_node.left_node = self.update_right(node.left_node, new_f, version_id, version_node)
+                new_node.left_node = node.left_node.update_right(new_f, version_node)
 
             return new_f
 
@@ -65,7 +75,7 @@ class ListNode(object):
 class VersionNode(object):
     __slots__ = ('version', 'child', 'parent', 'front', 'back', '__weakref__', '_cached_hash')
 
-    def __new__(cls, back, front, parent, child, version):
+    def __new__(cls, front, back, parent, child, version):
         self = super(VersionNode, cls).__new__(cls)
         self.back = back
         self.front = front
@@ -81,12 +91,13 @@ class PList(object):
 
     GLOBAL_VERSION = 0
 
-    def __init__(self):
-        PList.GLOBAL_VERSION += 1
-        self._root_version = VersionNode(None, None, None, None, PList.GLOBAL_VERSION)
+    def __init__(self, version_node=None):
 
-    def __init__(self, version_node):
-        self._root_version = version_node
+        if version_node:
+            self._root_version = version_node
+        else:
+            PList.GLOBAL_VERSION += 1
+            self._root_version = VersionNode(None, None, None, None, PList.GLOBAL_VERSION)
 
 
     def append_back(self, value):
@@ -95,7 +106,7 @@ class PList(object):
 
         if self._root_version.back is None:
 
-            new_n = ListNode(None, None, PList.GLOBAL_VERSION, value)
+            new_n = ListNode(None, None, value, PList.GLOBAL_VERSION)
 
             new_f = ListFatNode()
             new_f.add(new_n)
@@ -104,17 +115,20 @@ class PList(object):
 
             return PList(new_v)
 
-        new_n = ListNode(None, None, PList.GLOBAL_VERSION, value)
+        new_n = ListNode(None, None, value, PList.GLOBAL_VERSION)
         new_f = ListFatNode()
         new_f.add(new_n)
 
         new_v = VersionNode(self._root_version.front, new_f, self._root_version, None, PList.GLOBAL_VERSION)
         self._root_version.child = new_v
 
-        new_n.left_node = self._root_version.back.update_right(new_f, new_v, PList.GLOBAL_VERSION)
+        new_n.left_node = self._root_version.back.update_right(new_f, new_v)
+
+        return PList(new_v)
 
 
-
+def plist():
+    return PList()
 
 
 
