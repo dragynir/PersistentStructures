@@ -9,6 +9,7 @@ class PMap(object):
     def __new__(cls, size, buckets):
         self = super(PMap, cls).__new__(cls)
         self._size = size
+        # pvector с (key, value) парами
         self._buckets = buckets
         return self
 
@@ -64,14 +65,23 @@ class PMap(object):
             ) from e
 
     def iterkeys(self):
+        """
+            Iter pmap keys
+        """
         for k, _ in self.iteritems():
             yield k
 
     def itervalues(self):
+        """
+            Iter pmap values
+        """
         for _, v in self.iteritems():
             yield v
 
     def iteritems(self):
+        """
+            Iter pmap items: (key, value)
+        """
         for bucket in self._buckets:
             if bucket:
                 for k, v in bucket:
@@ -101,12 +111,21 @@ class PMap(object):
         return self._cached_hash
 
     def set(self, key, val):
+        """
+            Set value by key
+        """
         return self.evolver().set(key, val).persistent()
 
     def remove(self, key):
+        """
+            Remove element by key
+        """
         return self.evolver().remove(key).persistent()
 
     def update(self, *maps):
+        """
+            Update map values by keys
+        """
         return self.update_with(lambda l, r: r, *maps)
 
     def update_with(self, update_fn, *maps):
@@ -132,31 +151,38 @@ class PMap(object):
             self.set(key, val)
 
         def set(self, key, val):
+            # buckets overflow
             if len(self._buckets_evolver) < 0.67 * self._size:
                 self._reallocate(2 * len(self._buckets_evolver))
 
             kv = (key, val)
+            # находим бакет элемента
             index, bucket = PMap._get_bucket(self._buckets_evolver, key)
             if bucket:
                 for k, v in bucket:
                     if k == key:
+                        # находим элемент в бакете
                         if v is not val:
+                            # создаем новый бакет (копируем и выставляем новое значение по ключу)
+                            # заменяем бакет в pvector evolver
                             new_bucket = [(k2, v2) if k2 != k else (k2, val) for k2, v2 in bucket]
                             self._buckets_evolver[index] = new_bucket
 
                         return self
-
+                # ключа нет в бакете - создаем новый бакет с доп парой (key, value)
                 new_bucket = [kv]
                 new_bucket.extend(bucket)
                 self._buckets_evolver[index] = new_bucket
                 self._size += 1
             else:
+                # бакет не найден, создаем новый
                 self._buckets_evolver[index] = [kv]
                 self._size += 1
 
             return self
 
         def _reallocate(self, new_size):
+            # увеличиваем кол-во бакетов в два раза
             new_list = new_size * [None]
             buckets = self._buckets_evolver.persistent()
             for k, v in chain.from_iterable(x for x in buckets if x):
@@ -165,14 +191,20 @@ class PMap(object):
                     new_list[index].append((k, v))
                 else:
                     new_list[index] = [(k, v)]
-
+            # создаем новый pvector для бакетов
             self._buckets_evolver = pvector().evolver()
             self._buckets_evolver.extend(new_list)
 
         def is_dirty(self):
+            """
+                Check evolver for modifications
+            """
             return self._buckets_evolver.is_dirty()
 
         def persistent(self):
+            """
+                Create persistent pmap form evolver view
+            """
             if self.is_dirty():
                 self._original_pmap = PMap(self._size, self._buckets_evolver.persistent())
 
@@ -185,11 +217,14 @@ class PMap(object):
             return PMap._contains(self._buckets_evolver, key)
 
         def remove(self, key):
+            # находим бакет с элементом
             index, bucket = PMap._get_bucket(self._buckets_evolver, key)
 
             if bucket:
+                # создаем новый бакет без значения с ключом key
                 new_bucket = [(k, v) for (k, v) in bucket if k != key]
                 if len(bucket) > len(new_bucket):
+                    # ключ был в бакете
                     self._buckets_evolver[index] = new_bucket if new_bucket else None
                     self._size -= 1
                     return self
@@ -203,8 +238,10 @@ class PMap(object):
 def mapping(initial):
     size = 8
 
+    # создаем бакеты для хранения массивов пар (key, value)
     buckets = size * [None]
 
+    # для каждого ключа вычисляем номер бакета и добавляем по индексу
     for k, v in initial.items():
         h = hash(k)
         index = h % size
@@ -215,6 +252,7 @@ def mapping(initial):
         else:
             buckets[index] = [(k, v)]
 
+    # создаем pvector, который хранит бакеты
     return PMap(len(initial), pvector().extend(buckets))
 
 _EMPTY_PMAP = mapping({})
