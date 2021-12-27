@@ -1,10 +1,11 @@
+from numbers import Integral
 
 
 
 class ListFatNode(object):
     __slots__ = ('nodes', '__weakref__', '_cached_hash')
 
-    MAX_SIZE = 4
+    MAX_SIZE = 2
 
     def __new__(cls):
         self = super(ListFatNode, cls).__new__(cls)
@@ -34,6 +35,7 @@ class ListFatNode(object):
     def update_right(self, right_node, version_node):
         node = self.find_node(version_node)
         new_node = node.copy()
+        new_node.version = version_node.version
 
         new_node.right_node = right_node
 
@@ -43,12 +45,43 @@ class ListFatNode(object):
 
             if node.left_node:
                 new_node.left_node = node.left_node.update_right(new_f, version_node)
+            else:
+                version_node.front = new_f
+            # if version_node.back is self:
+            #     version_node.back = new_f
 
             return new_f
 
         self.add(new_node)
 
         return self
+
+    def update_left(self, left_node, version_node):
+
+        node = self.find_node(version_node)
+        new_node = node.copy()
+        new_node.version = version_node.version
+
+        new_node.left_node = left_node
+
+        if self.is_full():
+            new_f = ListFatNode()
+            new_f.add(new_node)
+
+            if node.right_node:
+                new_node.right_node = node.right_node.update_left(new_f, version_node)
+            else:
+                version_node.back = new_f
+            # if version_node.front is self:
+            #     print("AAAAAAAAAAAA")
+            #     version_node.front = new_f
+
+            return new_f
+
+        self.add(new_node)
+
+        return self
+
 
 
 
@@ -99,6 +132,43 @@ class PList(object):
             PList.GLOBAL_VERSION += 1
             self._root_version = VersionNode(None, None, None, None, PList.GLOBAL_VERSION)
 
+    def set(self, index, value):
+        if not isinstance(index, int):
+            raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+
+        PList.GLOBAL_VERSION += 1
+
+        front = self._root_version.front
+
+        it = front
+
+        for i in range(index):
+            it = it.find_node(self._root_version).right_node
+
+        new_n = it.find_node(self._root_version).copy()
+
+        new_v = VersionNode(self._root_version.front, self._root_version.back, self._root_version, None, PList.GLOBAL_VERSION)
+        new_n.value = value
+        new_n.version = PList.GLOBAL_VERSION
+
+        if it.is_full():
+            new_f = ListFatNode()
+            new_f.add(new_n)
+
+            new_n.left_node = it.update_right(new_f, new_v)
+            new_n.right_node = it.update_left(new_f, new_v)
+
+            if it.right_node is None:
+                new_v.back = new_f
+
+            if it.left_node is None:
+                new_v.front = new_f
+
+            return PList(new_v)
+
+        it.add(new_n)
+
+        return PList(new_v)
 
     def append_back(self, value):
 
