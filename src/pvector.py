@@ -96,7 +96,9 @@ class PythonPVector(object):
         """ Возвращает предыдущую версию вектора """
         curr_index = self._versions.index(self)
         curr_index = max(0, curr_index - 1)
-        return self._versions[curr_index]
+        undo_version = self._versions[curr_index]
+        undo_version._versions = self._versions
+        return undo_version
 
     def redo(self):
         """ Возвращает следующую версию вектора """
@@ -104,6 +106,9 @@ class PythonPVector(object):
         curr_index = self._versions.index(self)
         curr_index = min(len(self._versions) - 1, curr_index + 1)
         return self._versions[curr_index]
+
+    def versions(self):
+        return self._versions
 
     def set(self, i, val):
         """ Обновление значения по индексу """
@@ -403,7 +408,7 @@ class PythonPVector(object):
 
             # если evolver был модифицирован
             if self.is_dirty():
-                result = PythonPVector(self._count, self._shift, self._root, self._tail, []).extend(self._extra_tail)
+                result = PythonPVector(self._count, self._shift, self._root, self._tail, self._orig_pvector.versions()).extend(self._extra_tail)
                 self._reset(result)
 
             return result

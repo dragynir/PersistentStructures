@@ -64,6 +64,22 @@ class PMap(object):
                 "{0} has no attribute '{1}'".format(type(self).__name__, key)
             ) from e
 
+    def _undo(self):
+        self._buckets = self._buckets.undo()
+        self._size = len(list(self.iterkeys()))
+
+    def undo(self):
+        self._undo()
+        return self
+
+    def _redo(self):
+        self._buckets = self._buckets.redo()
+        self._size = len(list(self.iterkeys()))
+
+    def redo(self):
+        self._redo()
+        return self
+
     def iterkeys(self):
         """
             Iter pmap keys
