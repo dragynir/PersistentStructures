@@ -7,9 +7,11 @@ if __name__ == '__main__':
     l = plist()
 
     l1 = l.append_back(1)
+    print(l1)
     l2 = l1.append_back(2)
+    print(l2)
     l3 = l2.set(1, 3)
+    print(l3)
     l4 = l3.append_back(4)
-
-    print(2)
+    print(l4)
     # l2.append_back(2)

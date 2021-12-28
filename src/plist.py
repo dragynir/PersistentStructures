@@ -47,8 +47,6 @@ class ListFatNode(object):
                 new_node.left_node = node.left_node.update_right(new_f, version_node)
             else:
                 version_node.front = new_f
-            # if version_node.back is self:
-            #     version_node.back = new_f
 
             return new_f
 
@@ -72,9 +70,6 @@ class ListFatNode(object):
                 new_node.right_node = node.right_node.update_left(new_f, version_node)
             else:
                 version_node.back = new_f
-            # if version_node.front is self:
-            #     print("AAAAAAAAAAAA")
-            #     version_node.front = new_f
 
             return new_f
 
@@ -132,6 +127,32 @@ class PList(object):
             PList.GLOBAL_VERSION += 1
             self._root_version = VersionNode(None, None, None, None, PList.GLOBAL_VERSION)
 
+    def front(self):
+        return self._root_version.front.value
+
+    def back(self):
+        return self._root_version.back.value
+
+    def __str__(self):
+        return str(self.tolist())
+
+    def __len__(self):
+        return len(self.tolist())
+
+    def tolist(self):
+
+        if self._root_version.front is None:
+            return []
+
+        it_node = self._root_version.front.find_node(self._root_version)
+        py_list = [it_node.value]
+
+        while it_node.right_node is not None:
+            it_node = it_node.right_node.find_node(self._root_version)
+            py_list.append(it_node.value)
+
+        return py_list
+
     def set(self, index, value):
         if not isinstance(index, int):
             raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
@@ -175,15 +196,7 @@ class PList(object):
         PList.GLOBAL_VERSION += 1
 
         if self._root_version.back is None:
-
-            new_n = ListNode(None, None, value, PList.GLOBAL_VERSION)
-
-            new_f = ListFatNode()
-            new_f.add(new_n)
-
-            new_v = VersionNode(new_f, new_f, self._root_version, None, PList.GLOBAL_VERSION)
-
-            return PList(new_v)
+            return self._init_root(value)
 
         new_n = ListNode(None, None, value, PList.GLOBAL_VERSION)
         new_f = ListFatNode()
@@ -196,87 +209,38 @@ class PList(object):
 
         return PList(new_v)
 
+    def append_front(self, value):
+
+        PList.GLOBAL_VERSION += 1
+
+        if self._root_version.front is None:
+            return self._init_root(value)
+
+        new_n = ListNode(None, None, value, PList.GLOBAL_VERSION)
+        new_f = ListFatNode()
+        new_f.add(new_n)
+
+        new_v = VersionNode(new_f, self._root_version.back, self._root_version, None, PList.GLOBAL_VERSION)
+        self._root_version.child = new_v
+
+        new_n.right_node = self._root_version.front.update_left(new_f, new_v)
+
+        return PList(new_v)
+
+    def _init_root(self, value):
+
+        new_n = ListNode(None, None, value, PList.GLOBAL_VERSION)
+
+        new_f = ListFatNode()
+        new_f.add(new_n)
+
+        new_v = VersionNode(new_f, new_f, self._root_version, None, PList.GLOBAL_VERSION)
+
+        return PList(new_v)
+
 
 def plist():
     return PList()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # if self._root_version.back.is_full():
-        #
-        #     nearest_node = self._root_version.back.find_node(self._root_version, self._root_version.version)
-        #
-        #     new_n = ListNode(None, None, PList.GLOBAL_VERSION, value)
-        #     new_f = ListFatNode()
-        #     new_f.add(new_n)
-        #
-        #     node_copy = ListNode(nearest_node.left_node,
-        #                          new_f,
-        #                          nearest_node.value,
-        #                          PList.GLOBAL_VERSION
-        #              )
-        #
-        #     new_level_f = ListFatNode()
-        #     new_level_f.add(node_copy)
-        #
-        #     node_copy.right_node = new_f
-        #     new_n.left_node = new_level_f
-        #
-        #     # recursion
-        #
-        #
-        #     pass
-        #
-        #
-        #
-        # new_n = ListNode(None, None, PList.GLOBAL_VERSION, value)
-        # new_f = ListFatNode()
-        # new_f.add(new_n)
-        #
-        # nearest_node = self._root_version.back.find_node(self._root_version, self._root_version.version)
-        # node_copy = ListNode(nearest_node.left_node,
-        #                      new_f,
-        #                      nearest_node.value,
-        #                      PList.GLOBAL_VERSION
-        #                      )
-        #
-        # node_copy.right_node = new_f
-        # new_n.left_node = self._root_version.back
-        #
-        # new_v = VersionNode(self._root_version.front, new_f, self._root_version, None, PList.GLOBAL_VERSION)
-        #
-        # return PList(new_v)
-
-
-
 
 
 
