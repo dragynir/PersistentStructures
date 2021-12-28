@@ -28,11 +28,11 @@ class TestPList(TestCase):
 
     def test_brute_force(self):
 
-        for i in range(100):
+        for i in range(200):
             pl = plist()
             l = []
 
-            for j in range(100):
+            for j in range(200):
 
                 op = TestPList.get_operation()
 
@@ -44,14 +44,14 @@ class TestPList(TestCase):
                 value = random.randint(0, 1000)
 
                 print(i, j, op, ind, value)
-                print(pl)
+                print("before: ", pl)
                 
                 if op == Operations.REMOVE:
                     if pl_len == 0:
                         continue
 
                     pl = pl.remove(ind)
-                    l.remove(ind)
+                    del l[ind]
 
                 elif op == Operations.APPEND_BACK:
                     pl = pl.append_back(value)
@@ -60,15 +60,15 @@ class TestPList(TestCase):
                     pl = pl.append_front(value)
                     l.insert(0, value)
                 elif op == Operations.SET:
-
                     if pl_len == 0:
                         continue
                     pl = pl.set(ind, value)
                     l[ind] = value
 
                 elif op == Operations.INSERT:
-                    pass
+                    pl = pl.insert(ind, value)
+                    l.insert(ind, value)
 
-
+                print("after: ", pl)
                 self.assertEqual(l, pl.tolist())
 
