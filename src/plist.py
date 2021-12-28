@@ -127,17 +127,27 @@ class PList(object):
             PList.GLOBAL_VERSION += 1
             self._root_version = VersionNode(None, None, None, None, PList.GLOBAL_VERSION)
 
-    def front(self):
-        return self._root_version.front.value
-
-    def back(self):
-        return self._root_version.back.value
-
     def __str__(self):
         return str(self.tolist())
 
     def __len__(self):
         return len(self.tolist())
+
+    def undo(self):
+        if self._root_version.parent is None:
+            return None
+        return PList(self._root_version.parent)
+
+    def redo(self):
+        if self._root_version.child is None:
+            return None
+        return PList(self._root_version.child)
+
+    def front(self):
+        return self._root_version.front.value
+
+    def back(self):
+        return self._root_version.back.value
 
     def tolist(self):
 
@@ -152,6 +162,119 @@ class PList(object):
             py_list.append(it_node.value)
 
         return py_list
+
+    def remove(self, index):
+
+        # TODO check side cases
+
+        if not isinstance(index, int):
+            raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+
+        if index < 0:
+            index += len(self)
+
+        if not (0 <= index < len(self)):
+            raise ValueError("Bad index for list with length '%s' " % len(self))
+
+        PList.GLOBAL_VERSION += 1
+
+        it = self._root_version.front
+
+        for i in range(index):
+            it = it.find_node(self._root_version).right_node
+
+        node_to_del = it.find_node(self._root_version)
+
+        new_v = VersionNode(self._root_version.front, self._root_version.back, self._root_version, None,
+                            PList.GLOBAL_VERSION)
+
+        if node_to_del.right_node is None and node_to_del.left_node is None:
+            new_v.front = None
+            new_v.back = None
+            return PList(new_v)
+
+        if node_to_del.right_node is None:
+            new_left_node = node_to_del.left_node.update_right(None,
+                                               new_v)
+
+            if it is self._root_version.back:
+                new_v.back = new_left_node
+
+            return PList(new_v)
+
+        if node_to_del.left_node is None:
+            new_right_node = node_to_del.right_node.update_left(None,
+                                               new_v)
+
+            if it is self._root_version.front:
+                new_v.front = new_right_node
+
+            return PList(new_v)
+
+        if not node_to_del.right_node.is_full():
+            new_left_node = node_to_del.left_node.update_right(node_to_del.right_node, new_v)
+
+            new_right_node = node_to_del.right_node.update_left(new_left_node, new_v)
+            assert new_right_node is node_to_del.right_node, "вернется та же фэтнода, так как она не была полной"
+
+            return PList(new_v)
+
+        fake_left_fat_node = ListFatNode()
+        new_right_node = node_to_del.right_node.update_left(fake_left_fat_node, new_v)
+
+        new_left_node = node_to_del.left_node.update_right(new_right_node, new_v)
+        assert len(new_right_node.nodes) == 1, "раньше правая фэтнода была полная, значит после добавления это новая фэтнода с одной нодой"
+
+        new_right_node.nodes[0].left_node = new_left_node
+
+        return PList(new_v)
+
+
+
+
+    def insert(self):
+        pass
+
+        # if not isinstance(index, int):
+        #     raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+        #
+        # PList.GLOBAL_VERSION += 1
+        #
+        # front = self._root_version.front
+        #
+        # it = front
+        #
+        # for i in range(index):
+        #     it = it.find_node(self._root_version).right_node
+        #
+        # new_n = it.find_node(self._root_version).copy()
+        #
+        # new_v = VersionNode(self._root_version.front, self._root_version.back, self._root_version, None,
+        #                     PList.GLOBAL_VERSION)
+        # new_n.value = value
+        # new_n.version = PList.GLOBAL_VERSION
+        #
+        # if it.is_full():
+        #     new_f = ListFatNode()
+        #     new_f.add(new_n)
+        #
+        #     new_n.left_node = it.update_right(new_f, new_v)
+        #     new_n.right_node = it.update_left(new_f, new_v)
+        #
+        #     if it.right_node is None:
+        #         new_v.back = new_f
+        #
+        #     if it.left_node is None:
+        #         new_v.front = new_f
+        #
+        #     return PList(new_v)
+        #
+        # it.add(new_n)
+        #
+        # return PList(new_v)
+
+
+
 
     def set(self, index, value):
         if not isinstance(index, int):
@@ -190,6 +313,7 @@ class PList(object):
         it.add(new_n)
 
         return PList(new_v)
+
 
     def append_back(self, value):
 
