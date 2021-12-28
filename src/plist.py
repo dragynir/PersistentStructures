@@ -289,7 +289,8 @@ class PList(object):
         for i in range(index):
             it = it.find_node(self._root_version).right_node
 
-        new_n = it.find_node(self._root_version).copy()
+        found_node = it.find_node(self._root_version)
+        new_n = found_node.copy()
 
         new_v = VersionNode(self._root_version.front, self._root_version.back, self._root_version, None, PList.GLOBAL_VERSION)
         new_n.value = value
@@ -302,10 +303,10 @@ class PList(object):
             new_n.left_node = it.update_right(new_f, new_v)
             new_n.right_node = it.update_left(new_f, new_v)
 
-            if it.right_node is None:
+            if found_node.right_node is None:
                 new_v.back = new_f
 
-            if it.left_node is None:
+            if found_node.left_node is None:
                 new_v.front = new_f
 
             return PList(new_v)

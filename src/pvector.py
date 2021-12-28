@@ -165,7 +165,7 @@ class PythonPVector(object):
     @staticmethod
     def _node_for(pvector_like, i):
         """
-            Поик node для элемента с индексом i
+            Поиск node для элемента с индексом i
         """
         if 0 <= i < pvector_like._count:
             if i >= pvector_like._tail_offset:
