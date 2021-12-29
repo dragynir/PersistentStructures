@@ -1,5 +1,5 @@
 from itertools import chain
-from pvector import pvector
+from .pvector import pvector
 
 
 class PMap(object):

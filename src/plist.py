@@ -112,6 +112,22 @@ class VersionNode(object):
         self.version = version
         return self
 
+class PListIter(object):
+
+    def __init__(self, plist):
+        self._plist = plist
+        self._pos = None
+
+    def __next__(self):
+        if self._pos is None:
+            if self._plist._root_version.front is None:
+                raise StopIteration
+            self._pos = self._plist._root_version.front.find_node(self._plist._root_version)
+        elif self._pos.right_node is None:
+            raise StopIteration
+        else:
+            self._pos = self._pos.right_node.find_node(self._plist._root_version)
+        return self._pos.value
 
 class PList(object):
 
@@ -133,6 +149,9 @@ class PList(object):
     def __len__(self):
         return len(self.tolist())
 
+    def __iter__(self):
+        return PListIter(self)
+
     def undo(self):
         if self._root_version.parent is None:
             return None
@@ -150,25 +169,15 @@ class PList(object):
         return self._root_version.back.value
 
     def tolist(self):
-
-        if self._root_version.front is None:
-            return []
-
-        it_node = self._root_version.front.find_node(self._root_version)
-        py_list = [it_node.value]
-
-        while it_node.right_node is not None:
-            it_node = it_node.right_node.find_node(self._root_version)
-            py_list.append(it_node.value)
-
+        py_list = []
+        for x in self:
+            py_list.append(x)
         return py_list
 
     def remove(self, index):
-
-        # TODO check side cases
-
         if not isinstance(index, int):
             raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+        assert index >= 0 and index < len(self)
 
         if index < 0:
             index += len(self)
@@ -230,56 +239,49 @@ class PList(object):
         return PList(new_v)
 
 
+    def insert(self, index, value):
+        if not isinstance(index, int):
+            raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
+        assert index >= 0 and index <= len(self)
+        PList.GLOBAL_VERSION += 1
+
+        new_n = ListNode(None, None, value, PList.GLOBAL_VERSION)
+        new_f = ListFatNode()
+        new_f.add(new_n)
+        new_v = VersionNode(self._root_version.front, self._root_version.back, self._root_version, None,
+                            PList.GLOBAL_VERSION)
+
+        front = self._root_version.front
+        if front is None:
+            new_v.back = new_f
+            new_v.front = new_f
+            return PList(new_v)
+        if index == 0:
+            new_n.right_node = front.update_left(new_f, new_v)
+            new_v.front = new_f
+            return PList(new_v)
+        left_it = front
+        for i in range(index - 1):
+            left_it = left_it.find_node(self._root_version).right_node
 
 
-    def insert(self):
-        pass
+        new_n.left_node = left_it.update_right(new_f, new_v)
 
-        # if not isinstance(index, int):
-        #     raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
-        #
-        # PList.GLOBAL_VERSION += 1
-        #
-        # front = self._root_version.front
-        #
-        # it = front
-        #
-        # for i in range(index):
-        #     it = it.find_node(self._root_version).right_node
-        #
-        # new_n = it.find_node(self._root_version).copy()
-        #
-        # new_v = VersionNode(self._root_version.front, self._root_version.back, self._root_version, None,
-        #                     PList.GLOBAL_VERSION)
-        # new_n.value = value
-        # new_n.version = PList.GLOBAL_VERSION
-        #
-        # if it.is_full():
-        #     new_f = ListFatNode()
-        #     new_f.add(new_n)
-        #
-        #     new_n.left_node = it.update_right(new_f, new_v)
-        #     new_n.right_node = it.update_left(new_f, new_v)
-        #
-        #     if it.right_node is None:
-        #         new_v.back = new_f
-        #
-        #     if it.left_node is None:
-        #         new_v.front = new_f
-        #
-        #     return PList(new_v)
-        #
-        # it.add(new_n)
-        #
-        # return PList(new_v)
+        right_it = left_it.find_node(self._root_version).right_node
+
+        if right_it is None:
+            new_v.back = new_f
+        else:
+            new_n.right_node = right_it.update_left(new_f, new_v)
 
 
+        return PList(new_v)
 
 
     def set(self, index, value):
         if not isinstance(index, int):
             raise TypeError("'%s' object cannot be interpreted as an index" % type(index).__name__)
-
+        assert index >= 0 and index < len(self)
         PList.GLOBAL_VERSION += 1
 
         front = self._root_version.front
@@ -299,15 +301,14 @@ class PList(object):
         if it.is_full():
             new_f = ListFatNode()
             new_f.add(new_n)
-
-            new_n.left_node = it.update_right(new_f, new_v)
-            new_n.right_node = it.update_left(new_f, new_v)
-
-            if found_node.right_node is None:
-                new_v.back = new_f
-
-            if found_node.left_node is None:
+            if new_n.left_node is not None:
+                new_n.left_node = found_node.left_node.update_right(new_f, new_v)
+            else:
                 new_v.front = new_f
+            if new_n.right_node is not None:
+                new_n.right_node = found_node.right_node.update_left(new_f, new_v)
+            else:
+                new_v.back = new_f
 
             return PList(new_v)
 
