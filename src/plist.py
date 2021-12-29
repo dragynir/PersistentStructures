@@ -277,6 +277,23 @@ class PList(object):
 
         return PList(new_v)
 
+    def __getitem__(self, item):
+        if not isinstance(item, int):
+            raise TypeError("'%s' object cannot be interpreted as an index" % type(item).__name__)
+        assert 0 <= item < len(self)
+
+        PList.GLOBAL_VERSION += 1
+
+        front = self._root_version.front
+
+        it = front
+
+        for i in range(item):
+            it = it.find_node(self._root_version).right_node
+
+        found_node = it.find_node(self._root_version)
+
+        return found_node.value
 
     def set(self, index, value):
         if not isinstance(index, int):
