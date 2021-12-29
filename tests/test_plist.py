@@ -113,6 +113,10 @@ class TestPList(TestCase):
         l = plist()
         self.assertRaises(AssertionError, partial(l.set, index=0, value=0))
 
+    def test_set_not_int(self):
+        l = plist()
+        self.assertRaises(AssertionError, partial(l.set, index=-1, value=0))
+
     def test_set_one_node(self):
         l = plist()
         l1 = l.append_back(1)
@@ -133,6 +137,12 @@ class TestPList(TestCase):
 
         self.assertEqual(len(l2), max_size)
         self.assertEqual(l2.tolist(), ref_list)
+
+
+    def test_getitem(self):
+        l = plist()
+        l = l.append_back_list([1, 2])
+        self.assertEqual(l[1], 2)
 
     def test_remove_empty(self):
         l = plist()
@@ -164,6 +174,52 @@ class TestPList(TestCase):
 
         self.assertEqual(len(l2), max_size - 1)
         self.assertEqual(l2.tolist(), ref_list)
+
+    def test_iterator_empty(self):
+        list = []
+        pl = plist()
+        for x in pl:
+            list.append(x)
+        self.assertEqual(list, pl.tolist())
+
+    def test_iterator_one(self):
+        list = []
+        pl = plist()
+        pl = pl.append_back(1)
+        for x in pl:
+            list.append(x)
+        self.assertEqual(list, pl.tolist())
+
+    def test_iterator(self):
+        list = []
+        pl = plist()
+        pl = pl.append_back(1)
+        pl = pl.append_back(2)
+        pl = pl.append_back(3)
+        pl = pl.append_back(4)
+        for x in pl:
+            list.append(x)
+        self.assertEqual(list, pl.tolist())
+
+    def undo_none_test(self):
+        pl = plist()
+        self.assertEqual(pl.undo(), None)
+
+    def redo_none_test(self):
+        pl = plist()
+        self.assertEqual(pl.redo(), None)
+
+    def redo_test(self):
+        pl = plist()
+        pl = pl.append_back(1)
+        pl2 = pl.append_back(2)
+        self.assertEqual(pl2.undo().redo().tolist(), pl2.tolist())
+
+    def undo_test(self):
+        pl = plist()
+        pl = pl.append_back(1)
+        pl2 = pl.append_back(2)
+        self.assertEqual(pl2.undo().tolist(), pl.tolist())
 
     def test_brute_force(self):
 
@@ -209,5 +265,4 @@ class TestPList(TestCase):
                     l.insert(ind, value)
 
                 print("after: ", pl)
-                self.assertEqual(l, pl.tolist())
-
+            self.assertEqual(l, pl.tolist())

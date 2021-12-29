@@ -146,9 +146,6 @@ class PList(object):
     def __str__(self):
         return str(self.tolist())
 
-    def __len__(self):
-        return len(self.tolist())
-
     def __iter__(self):
         return PListIter(self)
 
@@ -173,6 +170,9 @@ class PList(object):
         for x in self:
             py_list.append(x)
         return py_list
+
+    def __len__(self):
+        return len(self.tolist())
 
     def remove(self, index):
         if not isinstance(index, int):
@@ -333,6 +333,11 @@ class PList(object):
 
         return PList(new_v)
 
+    def append_back_list(self, list):
+        l = self
+        for x in list:
+            l = l.append_back(x)
+        return l
 
     def append_back(self, value):
 
